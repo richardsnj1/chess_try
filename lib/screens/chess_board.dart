@@ -1,3 +1,5 @@
+import 'package:chess_try/functions/iswhite.dart';
+import 'package:chess_try/widgets/squares.dart';
 import 'package:flutter/material.dart';
 
 class ChessBoardScreen extends StatefulWidget {
@@ -14,6 +16,17 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
       appBar: AppBar(
         title: const Text("Chess Board"),
       ),
+      body: GridView.builder(
+          itemCount: 64,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 8),
+          itemBuilder: (ctx, index) {
+            return Center(
+              child: Square(
+                isWhite: isWhite(index),
+              ),
+            );
+          }),
     );
   }
 }
