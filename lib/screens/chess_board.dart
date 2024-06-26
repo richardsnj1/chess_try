@@ -566,21 +566,21 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
       }
 
       // Castling
-      if (selectedPiece!.type == ChessPieces.king) {
-        if (newCol == selectedCol + 2) {
-          setState(() {
-            board[selectedRow][selectedCol + 1] =
-                board[selectedRow][selectedCol + 3];
-            board[selectedRow][selectedCol + 3] = null;
-          });
-        } else if (newCol == selectedCol - 2) {
-          setState(() {
-            board[selectedRow][selectedCol - 1] =
-                board[selectedRow][selectedCol - 4];
-            board[selectedRow][selectedCol - 4] = null;
-          });
-        }
-      }
+      // if (selectedPiece!.type == ChessPieces.king) {
+      //   if (newCol == selectedCol + 2) {
+      //     setState(() {
+      //       board[selectedRow][selectedCol + 1] =
+      //           board[selectedRow][selectedCol + 3];
+      //       board[selectedRow][selectedCol + 3] = null;
+      //     });
+      //   } else if (newCol == selectedCol - 2) {
+      //     setState(() {
+      //       board[selectedRow][selectedCol - 1] =
+      //           board[selectedRow][selectedCol - 4];
+      //       board[selectedRow][selectedCol - 4] = null;
+      //     });
+      //   }
+      // }
     }
 
     if (board[newRow][newCol] != null) {
@@ -631,21 +631,21 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
     // Castling move
     if (selectedPiece != null && selectedPiece!.type == ChessPieces.king) {
       if (selectedPiece!.isWhite && selectedRow == 7 && newRow == 7) {
-        if (newCol == 6) {
+        if (newCol == 6 && whiteKingSideCastling) {
           // King-side castling
           board[7][5] = board[7][7];
           board[7][7] = null;
-        } else if (newCol == 2) {
+        } else if (newCol == 2 && whiteQueenSideCastling) {
           // Queen-side castling
           board[7][3] = board[7][0];
           board[7][0] = null;
         }
       } else if (!selectedPiece!.isWhite && selectedRow == 0 && newRow == 0) {
-        if (newCol == 6) {
+        if (newCol == 6 && blackKingSideCastling) {
           // King-side castling
           board[0][5] = board[0][7];
           board[0][7] = null;
-        } else if (newCol == 2) {
+        } else if (newCol == 2 && blackQueenSideCastling) {
           // Queen-side castling
           board[0][3] = board[0][0];
           board[0][0] = null;
