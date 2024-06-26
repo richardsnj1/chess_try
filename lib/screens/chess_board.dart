@@ -26,7 +26,15 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
   List<ChessPiece> blackPiecesTaken = [];
 
   bool isWhiteTurn = true;
+  List<int> whiteKingPosition = [7, 4];
+  List<int> blackKingPosition = [0, 4];
+  bool checkStatus = false;
 
+  Map<String, int> lastMove = {};
+  bool whiteKingSideCastling = true;
+  bool whiteQueenSideCastling = true;
+  bool blackKingSideCastling = true;
+  bool blackQueenSideCastling = true;
   @override
   void initState() {
     super.initState();
@@ -119,7 +127,7 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
     );
 
     //queen
-    newBoard[0][4] = ChessPiece(
+    newBoard[0][3] = ChessPiece(
       type: ChessPieces.queen,
       isWhite: false,
       image: "assets/black-queen.png",
@@ -131,7 +139,7 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
     );
 
     //kings
-    newBoard[0][3] = ChessPiece(
+    newBoard[0][4] = ChessPiece(
       type: ChessPieces.king,
       isWhite: false,
       image: "assets/black-king.png",
@@ -150,9 +158,9 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
     if (selectedPiece == null && board[row][col] != null) {
       setState(() {
         // if (board[row][col]!.isWhite == isWhiteTurn) {
-          selectedPiece = board[row][col];
-          selectedRow = row;
-          selectedCol = col;
+        selectedPiece = board[row][col];
+        selectedRow = row;
+        selectedCol = col;
         // }
       });
     } else if (board[row][col] == selectedPiece &&
@@ -176,7 +184,7 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
     }
 
     validMoves =
-        calculateRawValidMoves(selectedRow, selectedCol, selectedPiece);
+        calculateRealValidMoves(selectedRow, selectedCol, selectedPiece, true);
   }
 
   List<List<int>> calculateRawValidMoves(
@@ -209,24 +217,62 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
         //kill diagonal
         if (isInBoard(row + direction, col - 1) &&
             board[row + direction][col - 1] != null &&
-            board[row + direction][col - 1]!.isWhite) {
-          possibleMoves.add([row + direction, col + 1]);
+            board[row + direction][col - 1]!.isWhite != selectedPiece.isWhite) {
+          possibleMoves.add([row + direction, col - 1]);
         }
         if (isInBoard(row + direction, col + 1) &&
             board[row + direction][col + 1] != null &&
-            !board[row + direction][col + 1]!.isWhite) {
+            board[row + direction][col + 1]!.isWhite != selectedPiece.isWhite) {
           possibleMoves.add([row + direction, col + 1]);
         }
-        //  if (isInBoard(row + direction, col - 1) &&
-        //     board[row + direction][col + 1] != null &&
-        //     board[row + direction][col - 1]!.isWhite) {
-        //   possibleMoves.add([row + direction, col - 1]);
+
+        //en passant
+        // if (selectedPiece!.isWhite) {
+        //   if (row == 3) {
+        //     if (lastMove['row'] == row &&
+        //         lastMove['col'] == col - 1 &&
+        //         board[row][col - 1]?.type == ChessPieces.pawn &&
+        //         !board[row][col - 1]!.isWhite) {
+        //       possibleMoves.add([row - 1, col - 1]);
+        //     }
+        //     if (lastMove['row'] == row &&
+        //         lastMove['col'] == col + 1 &&
+        //         board[row][col + 1]?.type == ChessPieces.pawn &&
+        //         !board[row][col + 1]!.isWhite) {
+        //       possibleMoves.add([row - 1, col + 1]);
+        //     }
+        //   }
+        // } else {
+        //   if (row == 4) {
+        //     if (lastMove['row'] == row &&
+        //         lastMove['col'] == col - 1 &&
+        //         board[row][col - 1]?.type == ChessPieces.pawn &&
+        //         board[row][col - 1]!.isWhite) {
+        //       possibleMoves.add([row + 1, col - 1]);
+        //     }
+        //     if (lastMove['row'] == row &&
+        //         lastMove['col'] == col + 1 &&
+        //         board[row][col + 1]?.type == ChessPieces.pawn &&
+        //         board[row][col + 1]!.isWhite) {
+        //       possibleMoves.add([row + 1, col + 1]);
+        //     }
+        //   }
         // }
-        // if (isInBoard(row + direction, col + 1) &&
-        //     board[row + direction][col - 1] != null &&
-        //     !board[row + direction][col + 1]!.isWhite) {
-        //   possibleMoves.add([row + direction, col - 1]);
-        // }
+        if (isInBoard(row + direction, col + 1) &&
+            board[row][col + 1] != null &&
+            board[row][col + 1]!.type == ChessPieces.pawn &&
+            board[row][col + 1]!.isWhite != selectedPiece.isWhite &&
+            board[row + direction][col + 1] == null) {
+          possibleMoves.add([row + direction, col + 1]);
+        }
+        if (isInBoard(row + direction, col - 1) &&
+            board[row][col - 1] != null &&
+            board[row][col - 1]!.type == ChessPieces.pawn &&
+            board[row][col - 1]!.isWhite != selectedPiece.isWhite &&
+            board[row + direction][col - 1] == null) {
+          possibleMoves.add([row + direction, col - 1]);
+        }
+
         break;
       case ChessPieces.rook:
         var directions = [
@@ -367,6 +413,36 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
           }
           possibleMoves.add([newRow, newCol]);
         }
+        // Castling
+        if (selectedPiece.isWhite) {
+          if (whiteKingSideCastling &&
+              board[7][5] == null &&
+              board[7][6] == null &&
+              !kingInCheck(true)) {
+            possibleMoves.add([7, 6]);
+          }
+          if (whiteQueenSideCastling &&
+              board[7][3] == null &&
+              board[7][2] == null &&
+              board[7][1] == null &&
+              !kingInCheck(true)) {
+            possibleMoves.add([7, 2]);
+          }
+        } else {
+          if (blackKingSideCastling &&
+              board[0][5] == null &&
+              board[0][6] == null &&
+              !kingInCheck(false)) {
+            possibleMoves.add([0, 6]);
+          }
+          if (blackQueenSideCastling &&
+              board[0][3] == null &&
+              board[0][2] == null &&
+              board[0][1] == null &&
+              !kingInCheck(false)) {
+            possibleMoves.add([0, 2]);
+          }
+        }
         break;
       default:
     }
@@ -379,7 +455,134 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
   //   image: "assets/black-pawn.png",
   // );
 
+  List<List<int>> calculateRealValidMoves(
+      int row, int col, ChessPiece? selectedPiece, bool checkSimulation) {
+    List<List<int>> realValidMoves = [];
+    List<List<int>> possibleMoves =
+        calculateRawValidMoves(row, col, selectedPiece);
+
+    if (checkSimulation) {
+      for (var move in possibleMoves) {
+        int endRow = move[0];
+        int endCol = move[1];
+        if (simulatedMoveIsSafe(selectedPiece!, row, col, endRow, endCol)) {
+          realValidMoves.add(move);
+        }
+      }
+    } else {
+      realValidMoves = possibleMoves;
+    }
+    return realValidMoves;
+  }
+
+  bool simulatedMoveIsSafe(
+      ChessPiece piece, int startRow, int startCol, int endRow, int endCol) {
+    ChessPiece? originalDestinationPiece = board[endRow][endCol];
+
+    //update king pos
+    List<int>? originalKingPosition;
+    if (piece.type == ChessPieces.king) {
+      originalKingPosition =
+          piece.isWhite ? whiteKingPosition : blackKingPosition;
+      if (piece.isWhite) {
+        whiteKingPosition = [endRow, endCol];
+      } else {
+        blackKingPosition = [endRow, endCol];
+      }
+    }
+
+    //simulate move
+    board[endRow][endCol] = piece;
+    board[startRow][startCol] = null;
+
+    bool _kingInCheck = kingInCheck(piece.isWhite);
+
+    board[startRow][startCol] = piece;
+    board[endRow][endCol] = originalDestinationPiece;
+
+    if (piece.type == ChessPieces.king) {
+      if (piece.isWhite) {
+        whiteKingPosition = originalKingPosition!;
+      } else {
+        blackKingPosition = originalKingPosition!;
+      }
+    }
+
+    return !_kingInCheck;
+  }
+
+  bool isCheckMate(bool isWhiteKing) {
+    print("asdasdasd");
+    if (!kingInCheck(isWhiteKing)) {
+      return false;
+    }
+
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        if (board[i][j] == null || board[i][j]!.isWhite != isWhiteKing) {
+          continue;
+        }
+        List<List<int>> pieceValidMoves =
+            calculateRealValidMoves(i, j, board[i][j], true);
+
+        if (pieceValidMoves.isNotEmpty) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   void movePiece(int newRow, int newCol) {
+    // if (selectedPiece != null && selectedPiece!.type == ChessPieces.pawn) {
+    //   if ((selectedPiece!.isWhite && selectedRow == 6 && newRow == 4) ||
+    //       (!selectedPiece!.isWhite && selectedRow == 1 && newRow == 3)) {
+    //     lastMove = {
+    //       'row': newRow,
+    //       'col': newCol,
+    //     };
+    //   } else {
+    //     lastMove = {};
+    //   }
+    // } else {
+    //   lastMove = {};
+    // }
+
+    if (selectedPiece != null) {
+      // En passant
+      if (selectedPiece!.type == ChessPieces.pawn &&
+          ((selectedPiece!.isWhite && selectedRow == 3) ||
+              (!selectedPiece!.isWhite && selectedRow == 4))) {
+        if (board[newRow][newCol] == null && newCol != selectedCol) {
+          setState(() {
+            if (selectedPiece!.isWhite) {
+              blackPiecesTaken.add(board[selectedRow][newCol]!);
+            } else {
+              whitePiecesTaken.add(board[selectedRow][newCol]!);
+            }
+            board[selectedRow][newCol] = null;
+          });
+        }
+      }
+
+      // Castling
+      if (selectedPiece!.type == ChessPieces.king) {
+        if (newCol == selectedCol + 2) {
+          setState(() {
+            board[selectedRow][selectedCol + 1] =
+                board[selectedRow][selectedCol + 3];
+            board[selectedRow][selectedCol + 3] = null;
+          });
+        } else if (newCol == selectedCol - 2) {
+          setState(() {
+            board[selectedRow][selectedCol - 1] =
+                board[selectedRow][selectedCol - 4];
+            board[selectedRow][selectedCol - 4] = null;
+          });
+        }
+      }
+    }
+
     if (board[newRow][newCol] != null) {
       var capturedPiece = board[newRow][newCol];
       if (capturedPiece!.isWhite) {
@@ -389,8 +592,75 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
       }
     }
 
+    if (selectedPiece!.type == ChessPieces.king) {
+      if (selectedPiece!.isWhite) {
+        whiteKingPosition = [newRow, newCol];
+      } else {
+        blackKingPosition = [newRow, newCol];
+      }
+    }
+
+    // Check if king moves
+    if (selectedPiece != null && selectedPiece!.type == ChessPieces.king) {
+      if (selectedPiece!.isWhite) {
+        whiteKingSideCastling = false;
+        whiteQueenSideCastling = false;
+      } else {
+        blackKingSideCastling = false;
+        blackQueenSideCastling = false;
+      }
+    }
+
+    // Check if rook moves
+    if (selectedPiece != null && selectedPiece!.type == ChessPieces.rook) {
+      if (selectedPiece!.isWhite) {
+        if (selectedRow == 7 && selectedCol == 0) {
+          whiteQueenSideCastling = false;
+        } else if (selectedRow == 7 && selectedCol == 7) {
+          whiteKingSideCastling = false;
+        }
+      } else {
+        if (selectedRow == 0 && selectedCol == 0) {
+          blackQueenSideCastling = false;
+        } else if (selectedRow == 0 && selectedCol == 7) {
+          blackKingSideCastling = false;
+        }
+      }
+    }
+
+    // Castling move
+    if (selectedPiece != null && selectedPiece!.type == ChessPieces.king) {
+      if (selectedPiece!.isWhite && selectedRow == 7 && newRow == 7) {
+        if (newCol == 6) {
+          // King-side castling
+          board[7][5] = board[7][7];
+          board[7][7] = null;
+        } else if (newCol == 2) {
+          // Queen-side castling
+          board[7][3] = board[7][0];
+          board[7][0] = null;
+        }
+      } else if (!selectedPiece!.isWhite && selectedRow == 0 && newRow == 0) {
+        if (newCol == 6) {
+          // King-side castling
+          board[0][5] = board[0][7];
+          board[0][7] = null;
+        } else if (newCol == 2) {
+          // Queen-side castling
+          board[0][3] = board[0][0];
+          board[0][0] = null;
+        }
+      }
+    }
+
     board[newRow][newCol] = selectedPiece;
     board[selectedRow][selectedCol] = null;
+
+    if (kingInCheck(!isWhiteTurn)) {
+      checkStatus = true;
+    } else {
+      checkStatus = false;
+    }
 
     setState(() {
       selectedPiece = null;
@@ -399,7 +669,56 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
       validMoves = [];
     });
 
+    if (isCheckMate(!isWhiteTurn)) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("Game Over, Check Mate!"),
+          actions: [
+            TextButton(
+              onPressed: resetGame,
+              child: const Text("Play Again"),
+            ),
+          ],
+        ),
+      );
+    }
+
     isWhiteTurn = !isWhiteTurn;
+  }
+
+  bool kingInCheck(bool isWhiteKing) {
+    List<int> kingPosition =
+        isWhiteKing ? whiteKingPosition : blackKingPosition;
+
+    for (int i = 0; i < 8; i++) {
+      for (int j = 0; j < 8; j++) {
+        if (board[i][j] == null || board[i][j]!.isWhite == isWhiteKing) {
+          continue;
+        }
+        List<List<int>> pieceValidMoves =
+            calculateRealValidMoves(i, j, board[i][j], false);
+
+        if (pieceValidMoves.any((move) =>
+            move[0] == kingPosition[0] && move[1] == kingPosition[1])) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  void resetGame() {
+    Navigator.pop(context);
+    initializeBoard();
+    checkStatus = false;
+    whitePiecesTaken.clear();
+    blackPiecesTaken.clear();
+    isWhiteTurn = true;
+    setState(() {
+      whiteKingPosition = [7, 4];
+      blackKingPosition = [0, 3];
+    });
   }
 
   @override
@@ -423,6 +742,7 @@ class _ChessBoardScreenState extends State<ChessBoardScreen> {
               },
             ),
           ),
+          Text(checkStatus ? "CHECK" : ""),
           Expanded(
             flex: 3,
             child: GridView.builder(
